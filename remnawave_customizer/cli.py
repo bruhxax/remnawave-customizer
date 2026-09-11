@@ -7,6 +7,7 @@ import time
 from . import __version__
 from . import ui
 from .config import load_config, save_config
+from .effects import EFFECT_KEYS
 from .palette import choose_color
 from .proxy import (
     CUSTOM_TARGET,
@@ -43,6 +44,20 @@ TEXT = {
         'background': 'Цвет фона',
         'surface': 'Цвет карточек и поверхностей',
         'radius': 'Скругление элементов',
+        'effects': 'Визуальные эффекты',
+        'effects_title': 'Визуальные эффекты',
+        'effects_hint': 'Эффекты лёгкие, полупрозрачные и автоматически используют цвет текущей темы.',
+        'fx_snow': 'Падающие светящиеся точки',
+        'fx_particles': 'Мерцающие частицы на фоне',
+        'fx_aurora': 'Мягкая движущаяся аура',
+        'fx_snow_short': 'снег',
+        'fx_particles_short': 'частицы',
+        'fx_aurora_short': 'аура',
+        'fx_enable_all': 'Включить все эффекты',
+        'fx_disable_all': 'Выключить все эффекты',
+        'fx_on': 'ВКЛ',
+        'fx_off': 'ВЫКЛ',
+        'fx_none': 'выключены',
         'preview': 'Предпросмотр',
         'apply': 'Применить тему повторно',
         'reset': 'Вернуть стандартный вид',
@@ -90,6 +105,20 @@ TEXT = {
         'background': 'Background color',
         'surface': 'Cards and surfaces color',
         'radius': 'Element rounding',
+        'effects': 'Visual effects',
+        'effects_title': 'Visual effects',
+        'effects_hint': 'Effects are lightweight, translucent and automatically follow the current theme accent.',
+        'fx_snow': 'Falling glowing dots',
+        'fx_particles': 'Twinkling background particles',
+        'fx_aurora': 'Soft moving aurora',
+        'fx_snow_short': 'snow',
+        'fx_particles_short': 'particles',
+        'fx_aurora_short': 'aurora',
+        'fx_enable_all': 'Enable all effects',
+        'fx_disable_all': 'Disable all effects',
+        'fx_on': 'ON',
+        'fx_off': 'OFF',
+        'fx_none': 'disabled',
         'preview': 'Preview',
         'apply': 'Reapply theme',
         'reset': 'Restore default look',
@@ -158,6 +187,25 @@ def _theme_name(config: dict, lang: str) -> str:
     return tr(lang, 'custom')
 
 
+def _effects_data(config: dict) -> dict:
+    theme = config.setdefault('theme', {})
+    data = theme.setdefault('effects', {})
+    for key in EFFECT_KEYS:
+        data.setdefault(key, False)
+    return data
+
+
+def _effects_summary(config: dict, lang: str) -> str:
+    data = _effects_data(config)
+    names = {
+        'snow': tr(lang, 'fx_snow_short'),
+        'particles': tr(lang, 'fx_particles_short'),
+        'aurora': tr(lang, 'fx_aurora_short'),
+    }
+    active = [names[key] for key in EFFECT_KEYS if bool(data.get(key))]
+    return ' + '.join(active) if active else tr(lang, 'fx_none')
+
+
 def _status_card(config: dict, lang: str) -> None:
     panel_ok, _ = panel_is_here()
     proxy = proxy_from_config(config) or detect_proxy()
@@ -167,6 +215,7 @@ def _status_card(config: dict, lang: str) -> None:
         f"{ui.green('●') if proxy else ui.red('●')} {tr(lang, 'proxy'):<15} {proxy.name if proxy else tr(lang, 'not_found')}",
         f"{ui.green('●') if injector else ui.yellow('●')} {tr(lang, 'injector'):<15} {tr(lang, 'online') if injector else tr(lang, 'offline')}",
         f"{ui.primary('◆')} {tr(lang, 'theme'):<15} {_theme_name(config, lang)}",
+        f"{ui.primary('✦')} {tr(lang, 'effects'):<15} {_effects_summary(config, lang)}",
     ]
     ui.card(tr(lang, 'status'), lines)
 
@@ -206,8 +255,10 @@ def choose_preset(config: dict, lang: str) -> None:
         return
 
     previous_theme = copy.deepcopy(config['theme'])
+    previous_effects = copy.deepcopy(_effects_data(config))
     preset = PRESETS[int(choice) - 1]
     config['theme'] = theme_from_preset(preset)
+    config['theme']['effects'] = previous_effects
     save_config(config)
 
     ui.clear(); header(lang); preview_inline(config, lang); print()
@@ -251,6 +302,42 @@ def choose_radius(config: dict, lang: str) -> None:
         _restore_theme(config, previous_theme, lang)
 
 
+def choose_effects(config: dict, lang: str) -> None:
+    while True:
+        data = _effects_data(config)
+        ui.clear(); header(lang); ui.heading(tr(lang, 'effects_title'))
+        ui.info(tr(lang, 'effects_hint'))
+        labels = [
+            f"❄  {tr(lang, 'fx_snow')} [{tr(lang, 'fx_on') if data['snow'] else tr(lang, 'fx_off')}]",
+            f"✦  {tr(lang, 'fx_particles')} [{tr(lang, 'fx_on') if data['particles'] else tr(lang, 'fx_off')}]",
+            f"◌  {tr(lang, 'fx_aurora')} [{tr(lang, 'fx_on') if data['aurora'] else tr(lang, 'fx_off')}]",
+            f"✨ {tr(lang, 'fx_enable_all')}",
+            f"○  {tr(lang, 'fx_disable_all')}",
+            tr(lang, 'back'),
+        ]
+        ui.menu(labels)
+        choice = ui.choose(tr(lang, 'choose'), ['1', '2', '3', '4', '5', '6'], '6')
+        if choice == '6':
+            return
+
+        previous_theme = copy.deepcopy(config['theme'])
+        data = _effects_data(config)
+        if choice in {'1', '2', '3'}:
+            key = EFFECT_KEYS[int(choice) - 1]
+            data[key] = not bool(data.get(key))
+        elif choice == '4':
+            for key in EFFECT_KEYS:
+                data[key] = True
+        else:
+            for key in EFFECT_KEYS:
+                data[key] = False
+
+        config['theme']['enabled'] = True
+        save_config(config)
+        if not _apply_now(config, lang):
+            _restore_theme(config, previous_theme, lang)
+
+
 def preview(config: dict, lang: str) -> None:
     ui.clear(); header(lang); ui.heading(tr(lang, 'preview_title'))
     theme = config['theme']
@@ -262,6 +349,7 @@ def preview(config: dict, lang: str) -> None:
         f"{tr(lang, 'background')}:  {ui.swatch(bg, 8)}",
         f"{tr(lang, 'surface')}:     {ui.swatch(surface, 8)}",
         f"{tr(lang, 'radius')}:      {radius_label}",
+        f"{tr(lang, 'effects')}:     {_effects_summary(config, lang)}",
     ])
     print()
     print(f"  {ui.swatch(bg, 18)}  background")
@@ -278,6 +366,7 @@ def preview_inline(config: dict, lang: str) -> None:
         f"{tr(lang, 'background')}: {ui.swatch(rgb(theme['background']), 7)}",
         f"{tr(lang, 'surface')}:    {ui.swatch(rgb(theme['surface']), 7)}",
         f"{tr(lang, 'radius')}:     {RADIUS_LABELS[lang].get(str(theme.get('radius')), '')}",
+        f"{tr(lang, 'effects')}:    {_effects_summary(config, lang)}",
     ])
 
 
@@ -372,11 +461,11 @@ def interactive(config: dict) -> None:
         ui.clear(); header(lang); _status_card(config, lang); ui.heading(tr(lang, 'menu'))
         options = [
             tr(lang, 'presets'), tr(lang, 'accent'), tr(lang, 'background'), tr(lang, 'surface'),
-            tr(lang, 'radius'), tr(lang, 'preview'), tr(lang, 'apply'), tr(lang, 'reset'),
-            tr(lang, 'settings'), tr(lang, 'exit'),
+            tr(lang, 'radius'), tr(lang, 'effects'), tr(lang, 'preview'), tr(lang, 'apply'),
+            tr(lang, 'reset'), tr(lang, 'settings'), tr(lang, 'exit'),
         ]
         ui.menu(options)
-        choice = ui.choose(tr(lang, 'choose'), [str(i) for i in range(1, 11)], '10')
+        choice = ui.choose(tr(lang, 'choose'), [str(i) for i in range(1, 12)], '11')
         if choice == '1':
             choose_preset(config, lang)
         elif choice == '2':
@@ -388,12 +477,14 @@ def interactive(config: dict) -> None:
         elif choice == '5':
             choose_radius(config, lang)
         elif choice == '6':
-            preview(config, lang)
+            choose_effects(config, lang)
         elif choice == '7':
-            apply_current(config, lang)
+            preview(config, lang)
         elif choice == '8':
-            reset_default(config, lang)
+            apply_current(config, lang)
         elif choice == '9':
+            reset_default(config, lang)
+        elif choice == '10':
             lang = settings(config, lang)
         else:
             ui.clear()
