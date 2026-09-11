@@ -22,6 +22,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
         'background': [7, 12, 19],
         'surface': [13, 21, 31],
         'radius': 'medium',
+        'effects': {
+            'snow': False,
+            'particles': False,
+            'aurora': False,
+        },
     },
     'proxy': {},
 }
