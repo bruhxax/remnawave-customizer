@@ -26,17 +26,24 @@ class ProxyTests(unittest.TestCase):
         self.assertIn('/__remnawave_customizer/theme.css', nginx)
         self.assertIn("sub_filter '</head>'", nginx)
 
+    def test_only_css_and_html_are_decoded(self):
+        nginx = runtime_nginx()
+        self.assertIn('location ~* \\.css$', nginx)
+        self.assertIn('location ^~ /api', nginx)
+        self.assertIn('location ~* \\.(?:js|mjs|map|json|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|wasm|lottie)$', nginx)
+        self.assertIn('gzip on;', nginx)
+        self.assertNotIn('sub_filter_types text/css application/javascript', nginx)
+
     def test_injector_normalizes_known_legacy_surface_tokens(self):
         nginx = runtime_nginx()
         self.assertIn("sub_filter '#1b1f26' 'var(--rwc-surface)'", nginx)
         self.assertIn("sub_filter '#161b23' 'var(--rwc-surface-deep)'", nginx)
-        self.assertIn('sub_filter_types text/css application/javascript', nginx)
+        self.assertIn('sub_filter_types text/css', nginx)
         self.assertIn('sub_filter_once off', nginx)
 
-    def test_injector_rewrites_hardcoded_cyan_effects(self):
+    def test_injector_rewrites_hardcoded_cyan_effects_in_css(self):
         nginx = runtime_nginx()
         self.assertIn("rgba(var(--rwc-accent-rgb),", nginx)
-        self.assertIn("rgba(var(--rwc-accent-soft-rgb),", nginx)
 
 
 if __name__ == '__main__':
