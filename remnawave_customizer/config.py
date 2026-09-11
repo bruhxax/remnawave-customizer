@@ -26,6 +26,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
             'snow': False,
             'particles': False,
             'aurora': False,
+            'orbs': False,
+            'sweep': False,
         },
     },
     'proxy': {},
