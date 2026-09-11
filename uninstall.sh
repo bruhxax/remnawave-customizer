@@ -13,15 +13,17 @@ fi
 
 APP="/opt/remnawave-customizer/app"
 
-# Restore the original reverse-proxy route BEFORE removing any files. This is
-# intentionally non-interactive so uninstall can never leave Panel pointing at
-# a deleted Customizer container.
+# Restore both original reverse-proxy routes BEFORE removing any files. This is
+# intentionally non-interactive so uninstall can never leave Panel or a local
+# Subscription Page pointing at a deleted Customizer container.
 if [[ -d "$APP/remnawave_customizer" ]]; then
   PYTHONPATH="$APP${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 from remnawave_customizer.config import load_config
 from remnawave_customizer.proxy import restore_proxy, stop_injector
+from remnawave_customizer.subpage import restore_route
 
 config = load_config()
+restore_route(config)
 restore_proxy(config)
 stop_injector(remove=True)
 PY
