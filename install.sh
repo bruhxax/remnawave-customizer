@@ -64,7 +64,7 @@ cp -a "$APP_SRC/remnawave_customizer" "$APP_DST/remnawave_customizer"
 cat > "$BIN" <<'EOF'
 #!/usr/bin/env bash
 export PYTHONPATH="/opt/remnawave-customizer/app${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m remnawave_customizer.cli "$@"
+exec python3 -m remnawave_customizer.cli_v2 "$@"
 EOF
 chmod 755 "$BIN"
 
@@ -76,11 +76,11 @@ echo "  ✓ Panel files are not replaced"
 if [[ $NO_SETUP -eq 1 ]]; then
   if is_configured; then
     echo
-    echo "Refreshing saved theme with the new Customizer engine..."
+    echo "Refreshing saved appearance with the new Customizer engine..."
     if customizer apply; then
-      echo "  ✓ Saved theme reapplied"
+      echo "  ✓ Saved appearance reapplied"
     else
-      echo "  ⚠ Theme could not be reapplied automatically"
+      echo "  ⚠ Appearance could not be reapplied automatically"
       echo "    Run: customizer apply"
     fi
   fi
