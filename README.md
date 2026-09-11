@@ -20,7 +20,7 @@ Customizer меняет внешний вид Panel через отдельны�
 ## Интерфейс
 
 <p align="center">
-  <img src="assets/menu.png" alt="Remnawave Customizer menu" width="90%">
+  <img src="assets/menu-v2.png" alt="Remnawave Customizer menu" width="90%">
 </p>
 
 ## Установка
