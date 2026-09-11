@@ -1,0 +1,34 @@
+name: Bootstrap repository
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .bootstrap/part00 .bootstrap/part01 .bootstrap/part02 .bootstrap/part03 .bootstrap/part04 | base64 -d > /tmp/remnawave-customizer.zip
+          rm -rf /tmp/remnawave-customizer
+          mkdir -p /tmp/remnawave-customizer
+          unzip -q /tmp/remnawave-customizer.zip -d /tmp/remnawave-customizer
+          rsync -a --delete --exclude='.git' /tmp/remnawave-customizer/remnawave-customizer/ ./
+          chmod +x install.sh uninstall.sh
+      - name: Publish clean source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'bruhxax'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add Remnawave Customizer v0.1.0'
+          git push
