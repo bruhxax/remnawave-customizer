@@ -2,7 +2,7 @@
 
 # 🎨 Remnawave Customizer
 
-**Console theme and appearance customizer for Remnawave Panel.**
+**Themes, colors, rounding and visual effects for Remnawave Panel from the console.**
 
 [Русский](README.md) · [MIT License](LICENSE)
 
@@ -11,9 +11,7 @@
 > [!IMPORTANT]
 > **Install this program only on the server where Remnawave Panel is installed.**
 
-Customize **accent color, background, surfaces, rounding** and ready-made themes using a visual color palette directly in the terminal.
-
-Panel, database and the official frontend are not replaced — the theme is injected as a separate CSS layer in front of Panel, so normal Remnawave upgrades can be performed as usual.
+Customizer changes Panel appearance through a separate CSS layer. The official frontend, database and Remnawave files are not replaced, so normal Panel upgrades can be performed as usual.
 
 ## Install
 
@@ -37,7 +35,16 @@ git pull
 sudo ./install.sh --no-setup
 ```
 
-Theme settings are preserved.
+Settings are preserved.
+
+## Full uninstall
+
+```bash
+cd ~/remnawave-customizer
+sudo ./uninstall.sh --purge
+```
+
+This restores the original Remnawave appearance and removes Customizer settings, runtime and backups.
 
 ---
 
