@@ -117,7 +117,8 @@ server {
     location = /__remnawave_customizer/theme.css {
         alias /usr/share/nginx/html/theme.css;
         default_type text/css;
-        add_header Cache-Control "no-store, max-age=0" always;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+        add_header Pragma "no-cache" always;
         add_header X-Content-Type-Options "nosniff" always;
     }
 
@@ -136,10 +137,32 @@ server {
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
 
-        # Disable upstream compression only on this internal hop so HTML can be safely injected.
+        # Compression is disabled only on this internal hop. It lets Nginx
+        # safely inject theme.css and normalize a few legacy hard-coded
+        # Remnawave design tokens without touching the official frontend files.
         proxy_set_header Accept-Encoding "";
-        sub_filter_once on;
+
+        sub_filter_types text/css application/javascript;
+        sub_filter_once off;
+
+        # Load Customizer after the official frontend styles.
         sub_filter '</head>' '<link rel="stylesheet" href="/__remnawave_customizer/theme.css"></head>';
+
+        # Remnawave 3.x still has a few legacy hard-coded surface colors in CSS
+        # modules and inline styles. Replace only known UI tokens. If upstream
+        # removes them in a future release these filters simply become no-ops.
+        sub_filter '#1b1f26' 'var(--rwc-surface)';
+        sub_filter '#1B1F26' 'var(--rwc-surface)';
+        sub_filter '#161b23' 'var(--rwc-surface-deep)';
+
+        # A small number of decorative cyan glows are hard-coded instead of
+        # using the Mantine cyan scale. Point them at the selected accent.
+        sub_filter 'rgba(6,182,212,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgba(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgb(6,182,212,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgb(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgba(34,211,238,' 'rgba(var(--rwc-accent-soft-rgb),';
+        sub_filter 'rgba(34, 211, 238,' 'rgba(var(--rwc-accent-soft-rgb),';
     }
 }
 '''
@@ -160,11 +183,33 @@ def write_empty_theme() -> None:
     (RUNTIME_DIR / 'theme.css').write_text('/* Remnawave Customizer disabled: default Panel theme */\n', encoding='utf-8')
 
 
+def _wait_injector_running(timeout: float = 35.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        code, out, _ = run(
+            "docker inspect -f '{{.State.Running}}' remnawave-customizer-proxy",
+            timeout=10,
+        )
+        if code == 0 and out.strip().lower() == 'true':
+            return
+        time.sleep(0.5)
+    raise CommandError('Customizer proxy did not start')
+
+
 def start_injector() -> None:
     code, _, _ = run('docker network inspect remnawave-network', timeout=15)
     if code != 0:
         raise CommandError('Docker network remnawave-network not found')
+
     must_run('docker compose up -d', timeout=240, cwd=RUNTIME_DIR)
+    _wait_injector_running()
+
+    # nginx.conf is a bind-mounted file. `docker compose up -d` does not
+    # recreate an already-running container when only that file changes, so a
+    # reload is required after Customizer itself is updated.
+    must_run('docker exec remnawave-customizer-proxy nginx -t', timeout=30)
+    must_run('docker exec remnawave-customizer-proxy nginx -s reload', timeout=30)
+
     deadline = time.monotonic() + 35
     last = 'starting'
     while time.monotonic() < deadline:
