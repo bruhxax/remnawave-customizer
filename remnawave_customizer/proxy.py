@@ -97,8 +97,8 @@ networks:
 
 def runtime_nginx() -> str:
     # Important performance rule: JS/API/images keep their original compression.
-    # Only HTML (for one <link> injection) and CSS (for a handful of legacy color
-    # tokens) are decoded. Nginx compresses the transformed response again.
+    # Only HTML (for one <link> injection) and CSS (for known legacy design
+    # tokens) are decoded. Nginx compresses transformed responses again.
     return r'''map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
@@ -163,9 +163,8 @@ server {
         proxy_send_timeout 3600s;
     }
 
-    # Transform CSS only. Remnawave currently has a few CSS-module colors that
-    # bypass Mantine tokens. They are mapped to our variables once and then the
-    # browser can cache the result normally.
+    # Transform CSS only. This is intentionally limited to known Remnawave 3.x
+    # legacy tokens so the browser still does the normal layout/painting work.
     location ~* \.css$ {
         resolver 127.0.0.11 valid=5s ipv6=off;
         set $remnawave_upstream http://remnawave:3000;
@@ -181,16 +180,41 @@ server {
 
         sub_filter_types text/css;
         sub_filter_once off;
+
+        # Legacy structural surfaces.
         sub_filter '#1b1f26' 'var(--rwc-surface)';
         sub_filter '#1B1F26' 'var(--rwc-surface)';
         sub_filter '#161b23' 'var(--rwc-surface-deep)';
         sub_filter '#161B23' 'var(--rwc-surface-deep)';
+
+        # Stock cyan effects.
         sub_filter 'rgba(6,182,212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgba(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgb(6,182,212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgb(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgba(34,211,238,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgba(34, 211, 238,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgb(34,211,238,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgb(34, 211, 238,' 'rgba(var(--rwc-accent-rgb),';
+
+        # Remnawave also mixes indigo/blue into the same decorative gradients.
+        # Normalize those glows so a pink/green/etc theme never keeps blue fog.
+        sub_filter 'rgba(99,102,241,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgba(99, 102, 241,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgb(99,102,241,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgb(99, 102, 241,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgba(59,130,246,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgba(59, 130, 246,' 'rgba(var(--rwc-accent-rgb),';
+
+        # Fixed cyan/teal hex accents used by scrollbars and decorative chrome.
+        sub_filter '#06b6d4' 'var(--rwc-accent)';
+        sub_filter '#06B6D4' 'var(--rwc-accent)';
+        sub_filter '#22d3ee' 'var(--mantine-color-cyan-4)';
+        sub_filter '#22D3EE' 'var(--mantine-color-cyan-4)';
+        sub_filter '#0d9488' 'var(--mantine-color-cyan-8)';
+        sub_filter '#0D9488' 'var(--mantine-color-cyan-8)';
+        sub_filter '#14b8a6' 'var(--mantine-color-cyan-7)';
+        sub_filter '#14B8A6' 'var(--mantine-color-cyan-7)';
     }
 
     # Heavy static files are untouched and keep upstream compression/caching.
