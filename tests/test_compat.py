@@ -7,7 +7,7 @@ from remnawave_customizer.themes import PRESETS, theme_from_preset
 
 class CompatTests(unittest.TestCase):
     def test_package_enables_compat_layer(self):
-        self.assertEqual(remnawave_customizer.__version__, '0.6.0')
+        self.assertEqual(remnawave_customizer.__version__, '0.6.1')
         css = themes.render_css(theme_from_preset(PRESETS[0]))
         self.assertIn('decorative accent compatibility', css)
 
