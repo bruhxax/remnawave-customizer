@@ -140,10 +140,11 @@ def accent_scale(accent: RGB) -> list[RGB]:
 
 
 def dark_scale(background: RGB, surface: RGB) -> list[RGB]:
-    # Follow Remnawave/Mantine's own dark hierarchy instead of repainting every
-    # component. This keeps nested forms, tables and modals visually consistent.
-    border = lighten(surface, 0.14)
-    border_soft = lighten(surface, 0.075)
+    # dark.0..3 remain neutral text colors. dark.4..9 are surfaces/borders.
+    # Borders are intentionally subtle: aggressive contrast creates bright
+    # outlines around cards/forms that are almost invisible in stock Remnawave.
+    border = lighten(surface, 0.09)
+    border_soft = lighten(surface, 0.045)
     return [
         (232, 236, 242),
         (204, 210, 219),
@@ -170,7 +171,7 @@ def render_css(theme: dict) -> str:
     text = (238, 241, 245)
     dimmed = (157, 166, 179)
     muted = (112, 122, 137)
-    surface_hover = lighten(surface, 0.055)
+    surface_hover = lighten(surface, 0.04)
     border = darks[4]
 
     lines = [
@@ -200,8 +201,13 @@ def render_css(theme: dict) -> str:
         '  --mantine-color-cyan-outline: var(--rwc-accent) !important;',
     ]
 
-    for i, value in enumerate(accents):
-        lines.append(f'  --mantine-color-cyan-{i}: {css_rgb(value)} !important;')
+    # Remnawave's decorative accent is not consistently named: some components
+    # use cyan, some blue and some indigo. Bridge those three palettes to the
+    # selected accent while leaving semantic red/green/orange/teal colors alone.
+    for palette in ('cyan', 'blue', 'indigo'):
+        for i, value in enumerate(accents):
+            lines.append(f'  --mantine-color-{palette}-{i}: {css_rgb(value)} !important;')
+
     for i, value in enumerate(darks):
         lines.append(f'  --mantine-color-dark-{i}: {css_rgb(value)} !important;')
 
@@ -219,14 +225,38 @@ def render_css(theme: dict) -> str:
         f'  --mantine-radius-default: {radius}px !important;',
         '}',
         '',
-        '/* Keep the page canvas on the selected background. Components themselves',
-        '   continue to use Remnawave/Mantine tokens instead of broad CSS overrides. */',
+        '/* Page canvas. Remove top-level outlines/shadows that become visible on',
+        '   strongly tinted themes even though stock Remnawave hides them. */',
         'html, body, #root, .mantine-AppShell-root, .mantine-AppShell-main {',
         '  background-color: var(--rwc-background) !important;',
+        '  border: 0 !important;',
+        '  outline: 0 !important;',
+        '}',
+        '.mantine-AppShell-root { box-shadow: none !important; }',
+        '.mantine-AppShell-header { border-top: 0 !important; }',
+        '',
+        '/* Sidebar ambient glow follows the selected accent instead of the stock',
+        '   hard-coded cyan/indigo glow. Keep it subtle to avoid a colored fog. */',
+        '.mantine-AppShell-navbar::before {',
+        '  background: radial-gradient(circle at 20% 20%, rgba(var(--rwc-accent-rgb), 0.065) 0%, transparent 52%) !important;',
         '}',
         '',
-        '/* Only inline legacy surfaces need a selector fallback. CSS-module legacy',
-        '   colors are normalized by the internal proxy before the browser caches CSS. */',
+        '/* Mantine NavigationProgress shares Progress track styles. With a custom',
+        '   dark palette its transparent top track can become visible as a 2-3px',
+        '   line. Force only the navigation progress track itself transparent. */',
+        '.mantine-Progress-root[style*="--nprogress-z-index"] {',
+        '  background: transparent !important;',
+        '  border: 0 !important;',
+        '  box-shadow: none !important;',
+        '}',
+        '.mantine-Progress-root[style*="--nprogress-z-index"]:not([data-mounted]) {',
+        '  opacity: 0 !important;',
+        '}',
+        '.mantine-Progress-root[style*="--nprogress-z-index"] .mantine-Progress-section::before {',
+        '  box-shadow: 0 0 8px rgba(var(--rwc-accent-rgb), 0.42), 0 0 4px rgba(var(--rwc-accent-rgb), 0.24) !important;',
+        '}',
+        '',
+        '/* Inline legacy surfaces from a handful of React components. */',
         '[style*="#1b1f26" i], [style*="rgb(27, 31, 38)" i] {',
         '  background-color: var(--rwc-surface) !important;',
         '}',
@@ -234,10 +264,27 @@ def render_css(theme: dict) -> str:
         '  background-color: var(--rwc-surface-deep) !important;',
         '}',
         '',
+        '/* Some Remnawave components hard-code indigo/cyan decoration in inline',
+        '   styles instead of theme variables. Normalize only background/border',
+        '   properties; text/status colors are intentionally left semantic. */',
+        '[style*="background: rgba(99, 102, 241"], [style*="background-color: rgba(99, 102, 241"],',
+        '[style*="background: rgba(6, 182, 212"], [style*="background-color: rgba(6, 182, 212"] {',
+        '  background-color: rgba(var(--rwc-accent-rgb), 0.08) !important;',
+        '}',
+        '[style*="border: 1px solid rgba(99, 102, 241"], [style*="border-color: rgba(99, 102, 241"],',
+        '[style*="border: 1px solid rgba(6, 182, 212"], [style*="border-color: rgba(6, 182, 212"] {',
+        '  border-color: rgba(var(--rwc-accent-rgb), 0.20) !important;',
+        '}',
+        '',
+        '/* Scrollbars should not keep Remnawave cyan/teal when another accent is selected. */',
+        '::-webkit-scrollbar-track, ::-webkit-scrollbar-corner {',
+        '  background: var(--rwc-background) !important;',
+        '}',
         '::-webkit-scrollbar-thumb {',
         '  background: var(--rwc-accent) !important;',
         '  border-color: var(--rwc-background) !important;',
         '}',
+        '* { scrollbar-color: var(--rwc-accent) var(--rwc-background); }',
         '::selection {',
         '  background: rgba(var(--rwc-accent-rgb), 0.24) !important;',
         '  color: var(--rwc-text) !important;',
