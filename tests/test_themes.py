@@ -9,6 +9,8 @@ class ThemeTests(unittest.TestCase):
             css = render_css(theme_from_preset(preset))
             self.assertIn('--mantine-color-body:', css)
             self.assertIn('--mantine-color-cyan-8:', css)
+            self.assertIn('--mantine-color-blue-8:', css)
+            self.assertIn('--mantine-color-indigo-8:', css)
             self.assertIn('--mantine-radius-default:', css)
             self.assertIn('--rwc-surface-deep:', css)
 
@@ -41,6 +43,16 @@ class ThemeTests(unittest.TestCase):
         self.assertNotIn('.mantine-Modal-content', css)
         self.assertNotIn('.mantine-Drawer-content', css)
         self.assertIn('.mantine-AppShell-main', css)
+
+    def test_sidebar_glow_uses_selected_accent(self):
+        css = render_css(theme_from_preset(PRESETS[-1]))
+        self.assertIn('.mantine-AppShell-navbar::before', css)
+        self.assertIn('rgba(var(--rwc-accent-rgb), 0.065)', css)
+
+    def test_navigation_progress_track_is_forced_transparent(self):
+        css = render_css(theme_from_preset(PRESETS[0]))
+        self.assertIn('.mantine-Progress-root[style*="--nprogress-z-index"]', css)
+        self.assertIn('background: transparent !important;', css)
 
     def test_css_has_no_external_resources(self):
         css = render_css(theme_from_preset(PRESETS[0]))
