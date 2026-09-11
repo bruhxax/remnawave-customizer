@@ -11,6 +11,9 @@ class ThemeTests(unittest.TestCase):
             self.assertIn('--mantine-color-cyan-8:', css)
             self.assertIn('--mantine-color-blue-8:', css)
             self.assertIn('--mantine-color-indigo-8:', css)
+            self.assertIn('--mantine-color-cyan-light:', css)
+            self.assertIn('--mantine-color-blue-light:', css)
+            self.assertIn('--mantine-color-indigo-light:', css)
             self.assertIn('--mantine-radius-default:', css)
             self.assertIn('--rwc-surface-deep:', css)
 
@@ -48,6 +51,12 @@ class ThemeTests(unittest.TestCase):
         css = render_css(theme_from_preset(PRESETS[-1]))
         self.assertIn('.mantine-AppShell-navbar::before', css)
         self.assertIn('rgba(var(--rwc-accent-rgb), 0.065)', css)
+        self.assertIn('.mantine-AppShell-navbar [data-active="true"] svg', css)
+
+    def test_mrt_inline_background_is_overridden_without_js_rewrite(self):
+        css = render_css(theme_from_preset(PRESETS[0]))
+        self.assertIn('[style*="--mrt-base-background-color"]', css)
+        self.assertIn('--mrt-base-background-color: var(--rwc-surface) !important;', css)
 
     def test_navigation_progress_track_is_forced_transparent(self):
         css = render_css(theme_from_preset(PRESETS[0]))
