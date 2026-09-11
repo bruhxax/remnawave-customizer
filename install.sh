@@ -16,6 +16,19 @@ if [[ ${EUID} -ne 0 ]]; then
   exit 1
 fi
 
+is_configured() {
+  [[ -f "$CONFIG" ]] || return 1
+  python3 - <<PY >/dev/null 2>&1
+import json
+p='$CONFIG'
+try:
+    d=json.load(open(p))
+    raise SystemExit(0 if d.get('configured') else 1)
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
 echo "[1/3] Checking requirements..."
 for cmd in python3 docker; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -61,19 +74,20 @@ echo "  ✓ No pip install"
 echo "  ✓ Panel files are not replaced"
 
 if [[ $NO_SETUP -eq 1 ]]; then
+  if is_configured; then
+    echo
+    echo "Refreshing saved theme with the new Customizer engine..."
+    if customizer apply; then
+      echo "  ✓ Saved theme reapplied"
+    else
+      echo "  ⚠ Theme could not be reapplied automatically"
+      echo "    Run: customizer apply"
+    fi
+  fi
   exit 0
 fi
 
-if [[ -f "$CONFIG" ]] && python3 - <<PY >/dev/null 2>&1
-import json
-p='$CONFIG'
-try:
-    d=json.load(open(p))
-    raise SystemExit(0 if d.get('configured') else 1)
-except Exception:
-    raise SystemExit(1)
-PY
-then
+if is_configured; then
   echo
   echo "Existing configuration found."
   echo "Run: customizer"
