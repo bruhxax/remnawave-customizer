@@ -3,12 +3,13 @@ from __future__ import annotations
 """Small runtime compatibility layer for visual quirks in Remnawave 3.x.
 
 The official frontend mixes theme tokens with a few component-local cyan/blue
-styles.  Keeping these overrides here lets the customizer stay safe: we do not
+styles. Keeping these overrides here lets the customizer stay safe: we do not
 modify the Panel frontend files and we can remove the layer at any time.
 """
 
 from . import proxy as _proxy
 from . import themes as _themes
+from .effects import render_effects_css
 
 _ORIGINAL_RENDER_CSS = _themes.render_css
 _ORIGINAL_RUNTIME_NGINX = _proxy.runtime_nginx
@@ -18,9 +19,9 @@ _INSTALLED = False
 EXTRA_CSS = r'''
 /* Remnawave Customizer: decorative accent compatibility. */
 
-/* Mantine writes variant variables into inline style attributes.  The numbered
+/* Mantine writes variant variables into inline style attributes. The numbered
    palette can already be themed, but those inline variables may still point at
-   the original cyan/blue/indigo family.  Force only decorative families to the
+   the original cyan/blue/indigo family. Force only decorative families to the
    selected accent; semantic red/green/orange/teal states stay untouched. */
 .mantine-ActionIcon-root[style*="mantine-color-cyan"],
 .mantine-ActionIcon-root[style*="mantine-color-blue"],
@@ -55,7 +56,7 @@ EXTRA_CSS = r'''
   --ti-bd: 1px solid rgba(var(--rwc-accent-rgb), 0.36) !important;
 }
 
-/* Sidebar links have their own hard-coded glow in Remnawave.  Repaint the glow
+/* Sidebar links have their own hard-coded glow in Remnawave. Repaint the glow
    itself, not only the text/border, so hover and active states never keep cyan. */
 .mantine-AppShell-navbar a:hover svg,
 .mantine-AppShell-navbar button:hover svg,
@@ -89,13 +90,17 @@ EXTRA_CSS = r'''
 
 
 def _render_css(theme: dict) -> str:
-    return _ORIGINAL_RENDER_CSS(theme) + "\n" + EXTRA_CSS
+    css = _ORIGINAL_RENDER_CSS(theme) + "\n" + EXTRA_CSS
+    effects = render_effects_css(theme)
+    if effects:
+        css += "\n" + effects
+    return css
 
 
 def _runtime_nginx() -> str:
     text = _ORIGINAL_RUNTIME_NGINX()
 
-    # Transformed CSS must be revalidated after a Customizer update.  Remnawave
+    # Transformed CSS must be revalidated after a Customizer update. Remnawave
     # serves hashed assets with long-lived caching, which can otherwise leave an
     # old cyan glow visible even after the theme engine was updated.
     marker = "        sub_filter_once off;\n"
