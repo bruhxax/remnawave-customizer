@@ -64,7 +64,7 @@ cp -a "$APP_SRC/remnawave_customizer" "$APP_DST/remnawave_customizer"
 cat > "$BIN" <<'EOF'
 #!/usr/bin/env bash
 export PYTHONPATH="/opt/remnawave-customizer/app${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m remnawave_customizer.cli_v2 "$@"
+exec python3 -m remnawave_customizer.cli_v3 "$@"
 EOF
 chmod 755 "$BIN"
 
@@ -72,6 +72,13 @@ echo "[3/3] Done."
 echo "  ✓ No apt update"
 echo "  ✓ No pip install"
 echo "  ✓ Panel files are not replaced"
+
+echo
+if docker inspect remnawave-subscription-page >/dev/null 2>&1; then
+  echo "  ✓ Local Subscription Page detected — appearance customization is available"
+else
+  echo "  • Local Subscription Page not detected — Sub Page appearance menu will stay unavailable"
+fi
 
 if [[ $NO_SETUP -eq 1 ]]; then
   if is_configured; then
