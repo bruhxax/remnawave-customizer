@@ -17,6 +17,8 @@
 
 Customizer changes Panel appearance through a separate CSS layer. The official frontend, database and Remnawave files are not replaced, so normal Panel upgrades can be performed as usual.
 
+If **Subscription Page runs on the same server as Panel**, the menu also provides separate Sub Page appearance controls: colors, rounding, presets, exact stock reset and synchronization with the Panel theme.
+
 ## Interface
 
 <p align="center">
@@ -55,7 +57,7 @@ sudo ./uninstall.sh --purge
 cd ~ && rm -rf ~/remnawave-customizer
 ```
 
-This restores the original Remnawave appearance and removes Customizer, settings, runtime, backups and the local repository checkout.
+This restores the original Remnawave Panel and local Sub Page appearance and removes Customizer, settings, runtime, backups and the local repository checkout.
 
 ---
 
