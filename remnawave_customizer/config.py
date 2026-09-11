@@ -30,6 +30,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
             'sweep': False,
         },
     },
+    'subpage': {
+        'enabled': False,
+        'mode': 'custom',
+        'preset': 'remnawave',
+        'accent': [6, 182, 212],
+        'background': [22, 27, 35],
+        'surface': [33, 38, 45],
+        'radius': 'medium',
+        'route': {},
+    },
     'proxy': {},
 }
 
