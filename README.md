@@ -42,9 +42,10 @@ sudo ./install.sh --no-setup
 ```bash
 cd ~/remnawave-customizer
 sudo ./uninstall.sh --purge
+cd ~ && rm -rf ~/remnawave-customizer
 ```
 
-Команда возвращает оригинальный вид Remnawave, отключает Customizer и удаляет его настройки, runtime и backups.
+Полное удаление возвращает оригинальный вид Remnawave и удаляет Customizer, его настройки, runtime, backups и локальный клон репозитория.
 
 ---
 
