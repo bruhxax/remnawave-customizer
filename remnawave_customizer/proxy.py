@@ -47,23 +47,24 @@ def panel_is_here() -> tuple[bool, str]:
 
 
 def detect_proxy() -> ProxyInfo | None:
-    # Prefer configurations already routed through Customizer, then known official layouts.
     for item in CANDIDATES:
-        if item.config_path.exists():
-            try:
-                text = item.config_path.read_text(encoding='utf-8')
-            except Exception:
-                continue
-            if CUSTOM_TARGET in text:
-                return item
+        if not item.config_path.exists():
+            continue
+        try:
+            text = item.config_path.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        if CUSTOM_TARGET in text:
+            return item
     for item in CANDIDATES:
-        if item.config_path.exists():
-            try:
-                text = item.config_path.read_text(encoding='utf-8')
-            except Exception:
-                continue
-            if PANEL_TARGET in text:
-                return item
+        if not item.config_path.exists():
+            continue
+        try:
+            text = item.config_path.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        if PANEL_TARGET in text:
+            return item
     return None
 
 
@@ -95,6 +96,9 @@ networks:
 
 
 def runtime_nginx() -> str:
+    # Important performance rule: JS/API/images keep their original compression.
+    # Only HTML (for one <link> injection) and CSS (for a handful of legacy color
+    # tokens) are decoded. Nginx compresses the transformed response again.
     return r'''map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
@@ -114,6 +118,12 @@ server {
     listen 3100;
     server_name _;
 
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 5;
+    gzip_types text/css application/json application/javascript image/svg+xml;
+
     location = /__remnawave_customizer/theme.css {
         alias /usr/share/nginx/html/theme.css;
         default_type text/css;
@@ -122,10 +132,10 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
     }
 
-    location / {
+    # API and sockets are a pure pass-through. No decompression, no filtering.
+    location ^~ /api {
         resolver 127.0.0.11 valid=5s ipv6=off;
         set $remnawave_upstream http://remnawave:3000;
-
         proxy_http_version 1.1;
         proxy_pass $remnawave_upstream;
         proxy_set_header Host $host;
@@ -136,33 +146,88 @@ server {
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
+    }
 
-        # Compression is disabled only on this internal hop. It lets Nginx
-        # safely inject theme.css and normalize a few legacy hard-coded
-        # Remnawave design tokens without touching the official frontend files.
+    location ^~ /socket.io/ {
+        resolver 127.0.0.11 valid=5s ipv6=off;
+        set $remnawave_upstream http://remnawave:3000;
+        proxy_http_version 1.1;
+        proxy_pass $remnawave_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $rwc_real_ip;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $rwc_forwarded_proto;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # Transform CSS only. Remnawave currently has a few CSS-module colors that
+    # bypass Mantine tokens. They are mapped to our variables once and then the
+    # browser can cache the result normally.
+    location ~* \.css$ {
+        resolver 127.0.0.11 valid=5s ipv6=off;
+        set $remnawave_upstream http://remnawave:3000;
+        proxy_http_version 1.1;
+        proxy_pass $remnawave_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $rwc_real_ip;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $rwc_forwarded_proto;
         proxy_set_header Accept-Encoding "";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
 
-        sub_filter_types text/css application/javascript;
+        sub_filter_types text/css;
         sub_filter_once off;
-
-        # Load Customizer after the official frontend styles.
-        sub_filter '</head>' '<link rel="stylesheet" href="/__remnawave_customizer/theme.css"></head>';
-
-        # Remnawave 3.x still has a few legacy hard-coded surface colors in CSS
-        # modules and inline styles. Replace only known UI tokens. If upstream
-        # removes them in a future release these filters simply become no-ops.
         sub_filter '#1b1f26' 'var(--rwc-surface)';
         sub_filter '#1B1F26' 'var(--rwc-surface)';
         sub_filter '#161b23' 'var(--rwc-surface-deep)';
-
-        # A small number of decorative cyan glows are hard-coded instead of
-        # using the Mantine cyan scale. Point them at the selected accent.
+        sub_filter '#161B23' 'var(--rwc-surface-deep)';
         sub_filter 'rgba(6,182,212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgba(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgb(6,182,212,' 'rgba(var(--rwc-accent-rgb),';
         sub_filter 'rgb(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),';
-        sub_filter 'rgba(34,211,238,' 'rgba(var(--rwc-accent-soft-rgb),';
-        sub_filter 'rgba(34, 211, 238,' 'rgba(var(--rwc-accent-soft-rgb),';
+        sub_filter 'rgba(34,211,238,' 'rgba(var(--rwc-accent-rgb),';
+        sub_filter 'rgba(34, 211, 238,' 'rgba(var(--rwc-accent-rgb),';
+    }
+
+    # Heavy static files are untouched and keep upstream compression/caching.
+    location ~* \.(?:js|mjs|map|json|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|wasm|lottie)$ {
+        resolver 127.0.0.11 valid=5s ipv6=off;
+        set $remnawave_upstream http://remnawave:3000;
+        proxy_http_version 1.1;
+        proxy_pass $remnawave_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $rwc_real_ip;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $rwc_forwarded_proto;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # SPA routes return the small index HTML. Decode only that response, append
+    # theme.css after official styles, then gzip it again for the client.
+    location / {
+        resolver 127.0.0.11 valid=5s ipv6=off;
+        set $remnawave_upstream http://remnawave:3000;
+        proxy_http_version 1.1;
+        proxy_pass $remnawave_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $rwc_real_ip;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $rwc_forwarded_proto;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Accept-Encoding "";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+
+        sub_filter_once on;
+        sub_filter '</head>' '<link rel="stylesheet" href="/__remnawave_customizer/theme.css"></head>';
     }
 }
 '''
@@ -186,10 +251,7 @@ def write_empty_theme() -> None:
 def _wait_injector_running(timeout: float = 35.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        code, out, _ = run(
-            "docker inspect -f '{{.State.Running}}' remnawave-customizer-proxy",
-            timeout=10,
-        )
+        code, out, _ = run("docker inspect -f '{{.State.Running}}' remnawave-customizer-proxy", timeout=10)
         if code == 0 and out.strip().lower() == 'true':
             return
         time.sleep(0.5)
@@ -204,9 +266,8 @@ def start_injector() -> None:
     must_run('docker compose up -d', timeout=240, cwd=RUNTIME_DIR)
     _wait_injector_running()
 
-    # nginx.conf is a bind-mounted file. `docker compose up -d` does not
-    # recreate an already-running container when only that file changes, so a
-    # reload is required after Customizer itself is updated.
+    # Bind-mounted config changes do not recreate the container. Validate and
+    # reload explicitly so upgrades take effect immediately.
     must_run('docker exec remnawave-customizer-proxy nginx -t', timeout=30)
     must_run('docker exec remnawave-customizer-proxy nginx -s reload', timeout=30)
 
@@ -263,12 +324,7 @@ def _validate_proxy(info: ProxyInfo) -> None:
     elif info.kind == 'angie':
         must_run(f'docker exec {info.service} angie -t', timeout=30)
     elif info.kind == 'caddy':
-        must_run(
-            f'docker exec {info.service} caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile',
-            timeout=30,
-        )
-    # Traefik watches /config dynamically. The patch only replaces a scalar URL,
-    # so no YAML structure is changed; keeping Traefik running avoids a global restart.
+        must_run(f'docker exec {info.service} caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile', timeout=30)
 
 
 def _reload_proxy(info: ProxyInfo) -> None:
@@ -277,12 +333,8 @@ def _reload_proxy(info: ProxyInfo) -> None:
     elif info.kind == 'angie':
         must_run(f'docker exec {info.service} angie -s reload', timeout=30)
     elif info.kind == 'caddy':
-        must_run(
-            f'docker exec {info.service} caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile',
-            timeout=30,
-        )
+        must_run(f'docker exec {info.service} caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile', timeout=30)
     elif info.kind == 'traefik':
-        # File provider has watch=true in the official Remnawave setup.
         time.sleep(1.0)
     if not _container_running(info.service):
         raise CommandError(f'{info.name} stopped after applying the route')
@@ -310,18 +362,18 @@ def patch_proxy(config: dict, info: ProxyInfo) -> None:
         return
     if PANEL_TARGET not in text:
         raise CommandError(f'{PANEL_TARGET} was not found in {info.config_path}')
+
     backup = _backup_proxy(info, text)
     patched = text.replace(PANEL_TARGET, CUSTOM_TARGET)
     try:
         _apply_proxy_text(info, patched)
     except Exception as exc:
-        # Never leave a broken public reverse proxy behind. Restore the exact
-        # previous file and reload it before returning the error.
         try:
             _apply_proxy_text(info, text)
         except Exception as rollback_exc:
             raise CommandError(f'{exc}; rollback also failed: {rollback_exc}') from rollback_exc
         raise
+
     config['proxy'] = {
         'kind': info.kind,
         'name': info.name,
@@ -358,12 +410,11 @@ def restore_proxy(config: dict) -> bool:
         config['proxy'] = {}
         save_config(config)
         return False
+
     restored = text.replace(CUSTOM_TARGET, PANEL_TARGET)
     try:
         _apply_proxy_text(info, restored)
     except Exception:
-        # Keep the current Customizer route intact if the original route cannot
-        # be validated/reloaded. This is safer than leaving the proxy broken.
         try:
             _apply_proxy_text(info, text)
         except Exception:
@@ -391,9 +442,8 @@ def ensure_installed(config: dict) -> ProxyInfo:
         raise CommandError(reason)
     info = proxy_from_config(config) or detect_proxy()
     if not info:
-        raise CommandError(
-            'Supported reverse proxy not found. Supported official layouts: Nginx, Caddy, Angie, Traefik.'
-        )
+        raise CommandError('Supported reverse proxy not found. Supported official layouts: Nginx, Caddy, Angie, Traefik.')
+
     if bool(config.get('theme', {}).get('enabled', True)):
         write_runtime(config['theme'])
     else:
