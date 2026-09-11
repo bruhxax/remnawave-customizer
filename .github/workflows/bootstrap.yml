@@ -21,9 +21,10 @@ jobs:
           rm -rf /tmp/remnawave-customizer
           mkdir -p /tmp/remnawave-customizer
           unzip -q /tmp/remnawave-customizer.zip -d /tmp/remnawave-customizer
-          rsync -a --delete --exclude='.git' /tmp/remnawave-customizer/remnawave-customizer/ ./
+          rsync -a --exclude='.git' --exclude='.github/workflows/tests.yml' /tmp/remnawave-customizer/remnawave-customizer/ ./
+          rm -f .github/workflows/tests.yml
           chmod +x install.sh uninstall.sh
-      - name: Publish clean source tree
+      - name: Publish source tree
         shell: bash
         run: |
           set -euo pipefail
