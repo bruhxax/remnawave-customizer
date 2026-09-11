@@ -42,9 +42,10 @@ Settings are preserved.
 ```bash
 cd ~/remnawave-customizer
 sudo ./uninstall.sh --purge
+cd ~ && rm -rf ~/remnawave-customizer
 ```
 
-This restores the original Remnawave appearance and removes Customizer settings, runtime and backups.
+This restores the original Remnawave appearance and removes Customizer, settings, runtime, backups and the local repository checkout.
 
 ---
 
