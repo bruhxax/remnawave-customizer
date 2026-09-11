@@ -27,6 +27,23 @@ class SubPageTests(unittest.TestCase):
         self.assertIn('.info-card-cyan', css)
         self.assertIn('scrollbar-color:', css)
 
+    def test_subpage_inline_theme_icons_follow_selected_accent(self):
+        config = copy.deepcopy(DEFAULT_CONFIG)
+        css = render_css(effective_theme(config))
+        self.assertIn('RWC Subscription Page: finish hardcoded decorative glow normalization', css)
+        self.assertIn('.mantine-Timeline-root', css)
+        self.assertIn('--tl-color: var(--rwc-sub-accent)', css)
+        self.assertIn('.mantine-ThemeIcon-root[style*="34, 211, 238"]', css)
+        self.assertIn('inset 0 0 20px rgba(var(--rwc-sub-accent-rgb), 0.16)', css)
+
+    def test_active_installation_client_keeps_accent_glow(self):
+        config = copy.deepcopy(DEFAULT_CONFIG)
+        css = render_css(effective_theme(config))
+        self.assertIn('[class*="appButtonActive"]', css)
+        self.assertIn('border-left-color: var(--rwc-sub-accent)', css)
+        self.assertIn('inset 4px 0 14px -4px rgba(var(--rwc-sub-accent-rgb), 0.38)', css)
+        self.assertIn('[class*="appName"]', css)
+
     def test_sync_mode_uses_panel_theme(self):
         config = copy.deepcopy(DEFAULT_CONFIG)
         config['subpage']['mode'] = 'sync'
