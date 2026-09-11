@@ -6,13 +6,11 @@
 
 [Русский](README.md) · [MIT License](LICENSE)
 
-<br>
-
-<img src="assets/prewiew.png" alt="Remnawave Customizer — theme previews" width="100%">
-
-<sub>Examples of ready-made themes</sub>
-
 </div>
+
+<p align="center">
+  <img src="assets/prewiew.png" alt="Remnawave Customizer themes preview" width="100%">
+</p>
 
 > [!IMPORTANT]
 > **Install this program only on the server where Remnawave Panel is installed.**
@@ -21,11 +19,9 @@ Customizer changes Panel appearance through a separate CSS layer. The official f
 
 ## Interface
 
-<div align="center">
-<img src="assets/menu.png" alt="Remnawave Customizer — console menu" width="900">
-<br>
-<sub>Manage themes, colors and effects from the console</sub>
-</div>
+<p align="center">
+  <img src="assets/menu.png" alt="Remnawave Customizer menu" width="90%">
+</p>
 
 ## Install
 
