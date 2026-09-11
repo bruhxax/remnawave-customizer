@@ -19,23 +19,27 @@ class EffectTests(unittest.TestCase):
         self.assertNotIn('rwc-soft-snow', css)
         self.assertNotIn('rwc-ambient-particles', css)
         self.assertNotIn('rwc-soft-aurora', css)
+        self.assertNotIn('rwc-floating-orbs', css)
+        self.assertNotIn('rwc-soft-sweep', css)
 
     def test_snow_is_theme_aware_and_fades_near_half_screen(self):
         theme = theme_from_preset(PRESETS[1])
-        theme['effects'] = {'snow': True, 'particles': False, 'aurora': False}
+        theme['effects'] = {key: key == 'snow' for key in EFFECT_KEYS}
         css = render_css(theme)
+        self.assertIn('.rwc-fx-snow::before', css)
         self.assertIn('@keyframes rwc-soft-snow', css)
         self.assertIn('rgba(var(--rwc-fx-accent)', css)
         self.assertIn('translate3d(3.6vw, 52vh, 0)', css)
-        self.assertNotIn('rwc-ambient-particles', css)
 
-    def test_all_effects_can_be_composed(self):
+    def test_all_effects_use_dedicated_overlay(self):
         theme = theme_from_preset(PRESETS[-1])
         theme['effects'] = {key: True for key in EFFECT_KEYS}
         css = render_css(theme)
-        self.assertIn('@keyframes rwc-soft-snow', css)
-        self.assertIn('@keyframes rwc-ambient-particles', css)
+        self.assertIn('#rwc-effects', css)
+        self.assertIn('.rwc-fx-particles::before', css)
         self.assertIn('@keyframes rwc-soft-aurora', css)
+        self.assertIn('@keyframes rwc-floating-orbs', css)
+        self.assertIn('@keyframes rwc-soft-sweep', css)
         self.assertIn('@media (prefers-reduced-motion: reduce)', css)
         self.assertIn('pointer-events: none', css)
 
