@@ -198,15 +198,27 @@ def render_css(theme: dict) -> str:
         '  --mantine-color-default-border: var(--mantine-color-dark-4) !important;',
         '  --mantine-color-anchor: var(--rwc-accent) !important;',
         '  --mantine-color-gray-outline-hover: var(--rwc-surface-hover) !important;',
-        '  --mantine-color-cyan-outline: var(--rwc-accent) !important;',
     ]
 
-    # Remnawave's decorative accent is not consistently named: some components
-    # use cyan, some blue and some indigo. Bridge those three palettes to the
-    # selected accent while leaving semantic red/green/orange/teal colors alone.
+    # Remnawave does not use one accent name consistently. More importantly,
+    # Mantine variants such as color="cyan" use derived variables like
+    # --mantine-color-cyan-light instead of the numbered scale directly. Map the
+    # complete cyan/blue/indigo variant set so soft ActionIcons, outlines,
+    # hover glows and active navigation all follow the selected accent.
     for palette in ('cyan', 'blue', 'indigo'):
         for i, value in enumerate(accents):
             lines.append(f'  --mantine-color-{palette}-{i}: {css_rgb(value)} !important;')
+        lines.extend(
+            [
+                f'  --mantine-color-{palette}-filled: {css_rgb(accents[8])} !important;',
+                f'  --mantine-color-{palette}-filled-hover: {css_rgb(accents[9])} !important;',
+                f'  --mantine-color-{palette}-light: rgba(var(--rwc-accent-rgb), 0.14) !important;',
+                f'  --mantine-color-{palette}-light-hover: rgba(var(--rwc-accent-rgb), 0.20) !important;',
+                f'  --mantine-color-{palette}-light-color: {css_rgb(accents[4])} !important;',
+                f'  --mantine-color-{palette}-outline: {css_rgb(accent)} !important;',
+                f'  --mantine-color-{palette}-outline-hover: rgba(var(--rwc-accent-rgb), 0.10) !important;',
+            ]
+        )
 
     for i, value in enumerate(darks):
         lines.append(f'  --mantine-color-dark-{i}: {css_rgb(value)} !important;')
@@ -235,10 +247,12 @@ def render_css(theme: dict) -> str:
         '.mantine-AppShell-root { box-shadow: none !important; }',
         '.mantine-AppShell-header { border-top: 0 !important; }',
         '',
-        '/* Sidebar ambient glow follows the selected accent instead of the stock',
-        '   hard-coded cyan/indigo glow. Keep it subtle to avoid a colored fog. */',
+        '/* Sidebar ambient glow and icon glow follow the selected accent. */',
         '.mantine-AppShell-navbar::before {',
         '  background: radial-gradient(circle at 20% 20%, rgba(var(--rwc-accent-rgb), 0.065) 0%, transparent 52%) !important;',
+        '}',
+        '.mantine-AppShell-navbar a:hover svg, .mantine-AppShell-navbar [data-active="true"] svg {',
+        '  filter: drop-shadow(0 2px 4px rgba(var(--rwc-accent-rgb), 0.28)) !important;',
         '}',
         '',
         '/* Mantine NavigationProgress shares Progress track styles. With a custom',
@@ -256,6 +270,15 @@ def render_css(theme: dict) -> str:
         '  box-shadow: 0 0 8px rgba(var(--rwc-accent-rgb), 0.42), 0 0 4px rgba(var(--rwc-accent-rgb), 0.24) !important;',
         '}',
         '',
+        '/* Mantine React Table hard-codes #1b2027 as an inline CSS variable in',
+        '   Users, HWID/SRH inspectors and Torrent Blocker tables. Inline custom',
+        '   properties beat normal theme variables, so override that one variable',
+        '   with !important instead of filtering the JavaScript bundle. */',
+        '[style*="--mrt-base-background-color"] {',
+        '  --mrt-base-background-color: var(--rwc-surface) !important;',
+        '  background-color: var(--rwc-surface) !important;',
+        '}',
+        '',
         '/* Inline legacy surfaces from a handful of React components. */',
         '[style*="#1b1f26" i], [style*="rgb(27, 31, 38)" i] {',
         '  background-color: var(--rwc-surface) !important;',
@@ -264,14 +287,16 @@ def render_css(theme: dict) -> str:
         '  background-color: var(--rwc-surface-deep) !important;',
         '}',
         '',
-        '/* Some Remnawave components hard-code indigo/cyan decoration in inline',
-        '   styles instead of theme variables. Normalize only background/border',
-        '   properties; text/status colors are intentionally left semantic. */',
+        '/* Some Remnawave components hard-code indigo/cyan/blue decoration in',
+        '   inline styles instead of theme variables. Normalize only background',
+        '   and border properties; semantic status colors stay untouched. */',
         '[style*="background: rgba(99, 102, 241"], [style*="background-color: rgba(99, 102, 241"],',
+        '[style*="background: rgba(59, 130, 246"], [style*="background-color: rgba(59, 130, 246"],',
         '[style*="background: rgba(6, 182, 212"], [style*="background-color: rgba(6, 182, 212"] {',
         '  background-color: rgba(var(--rwc-accent-rgb), 0.08) !important;',
         '}',
         '[style*="border: 1px solid rgba(99, 102, 241"], [style*="border-color: rgba(99, 102, 241"],',
+        '[style*="border: 1px solid rgba(59, 130, 246"], [style*="border-color: rgba(59, 130, 246"],',
         '[style*="border: 1px solid rgba(6, 182, 212"], [style*="border-color: rgba(6, 182, 212"] {',
         '  border-color: rgba(var(--rwc-accent-rgb), 0.20) !important;',
         '}',
