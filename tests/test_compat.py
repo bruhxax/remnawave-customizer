@@ -7,7 +7,7 @@ from remnawave_customizer.themes import PRESETS, theme_from_preset
 
 class CompatTests(unittest.TestCase):
     def test_package_enables_compat_layer(self):
-        self.assertEqual(remnawave_customizer.__version__, '0.4.0')
+        self.assertEqual(remnawave_customizer.__version__, '0.5.0')
         css = themes.render_css(theme_from_preset(PRESETS[0]))
         self.assertIn('decorative accent compatibility', css)
 
@@ -29,6 +29,12 @@ class CompatTests(unittest.TestCase):
         self.assertIn('RWC: transformed CSS must not stay immutable', nginx)
         self.assertIn('proxy_hide_header Cache-Control;', nginx)
         self.assertIn('add_header Cache-Control "no-cache, must-revalidate" always;', nginx)
+
+    def test_effect_overlay_is_injected_into_spa_shell(self):
+        nginx = proxy.runtime_nginx()
+        self.assertIn('id="rwc-effects"', nginx)
+        self.assertIn('rwc-fx-particles', nginx)
+        self.assertIn("sub_filter '</body>'", nginx)
 
 
 if __name__ == '__main__':
