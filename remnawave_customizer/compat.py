@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-"""Small runtime compatibility layer for visual quirks in Remnawave 3.x.
+"""Runtime compatibility layer for Remnawave 3.x visual quirks.
 
-The official frontend mixes theme tokens with a few component-local cyan/blue
-styles. Keeping these overrides here lets the customizer stay safe: we do not
-modify the Panel frontend files and we can remove the layer at any time.
+The official frontend mixes theme tokens with several component-local cyan/blue
+styles. Keeping these overrides here lets the Customizer stay reversible: no
+Panel frontend files are modified and the whole layer can be removed at once.
 """
 
 from . import proxy as _proxy
@@ -18,11 +18,6 @@ _INSTALLED = False
 
 EXTRA_CSS = r'''
 /* Remnawave Customizer: decorative accent compatibility. */
-
-/* Mantine writes variant variables into inline style attributes. The numbered
-   palette can already be themed, but those inline variables may still point at
-   the original cyan/blue/indigo family. Force only decorative families to the
-   selected accent; semantic red/green/orange/teal states stay untouched. */
 .mantine-ActionIcon-root[style*="mantine-color-cyan"],
 .mantine-ActionIcon-root[style*="mantine-color-blue"],
 .mantine-ActionIcon-root[style*="mantine-color-indigo"] {
@@ -56,8 +51,6 @@ EXTRA_CSS = r'''
   --ti-bd: 1px solid rgba(var(--rwc-accent-rgb), 0.36) !important;
 }
 
-/* Sidebar links have their own hard-coded glow in Remnawave. Repaint the glow
-   itself, not only the text/border, so hover and active states never keep cyan. */
 .mantine-AppShell-navbar a:hover svg,
 .mantine-AppShell-navbar button:hover svg,
 .mantine-AppShell-navbar [data-active="true"] svg {
@@ -67,19 +60,12 @@ EXTRA_CSS = r'''
 .mantine-AppShell-navbar a:hover::before,
 .mantine-AppShell-navbar button:hover::before,
 .mantine-AppShell-navbar [data-active="true"]::before {
-  background: linear-gradient(
-    135deg,
-    transparent 0%,
-    rgba(var(--rwc-accent-rgb), 0.08) 50%,
-    transparent 100%
-  ) !important;
+  background: linear-gradient(135deg, transparent 0%, rgba(var(--rwc-accent-rgb), 0.08) 50%, transparent 100%) !important;
 }
 
 .mantine-AppShell-navbar [data-active="true"] {
   border-color: var(--rwc-accent) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(var(--rwc-accent-rgb), 0.05),
-    0 0 14px rgba(var(--rwc-accent-rgb), 0.04) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--rwc-accent-rgb), 0.05), 0 0 14px rgba(var(--rwc-accent-rgb), 0.04) !important;
 }
 
 .mantine-AppShell-navbar [data-active="true"]::after {
@@ -87,6 +73,16 @@ EXTRA_CSS = r'''
   box-shadow: 0 0 8px rgba(var(--rwc-accent-rgb), 0.42) !important;
 }
 '''
+
+EFFECTS_HTML = (
+    '<div id="rwc-effects" aria-hidden="true">'
+    '<div class="rwc-fx rwc-fx-particles"></div>'
+    '<div class="rwc-fx rwc-fx-aurora"></div>'
+    '<div class="rwc-fx rwc-fx-orbs"></div>'
+    '<div class="rwc-fx rwc-fx-sweep"></div>'
+    '<div class="rwc-fx rwc-fx-snow"></div>'
+    '</div>'
+)
 
 
 def _render_css(theme: dict) -> str:
@@ -100,9 +96,6 @@ def _render_css(theme: dict) -> str:
 def _runtime_nginx() -> str:
     text = _ORIGINAL_RUNTIME_NGINX()
 
-    # Transformed CSS must be revalidated after a Customizer update. Remnawave
-    # serves hashed assets with long-lived caching, which can otherwise leave an
-    # old cyan glow visible even after the theme engine was updated.
     marker = "        sub_filter_once off;\n"
     addition = (
         "\n"
@@ -113,6 +106,11 @@ def _runtime_nginx() -> str:
     )
     if "RWC: transformed CSS must not stay immutable" not in text and marker in text:
         text = text.replace(marker, marker + addition, 1)
+
+    head_line = "        sub_filter '</head>' '<link rel=\"stylesheet\" href=\"/__remnawave_customizer/theme.css\"></head>';\n"
+    body_line = f"        sub_filter '</body>' '{EFFECTS_HTML}</body>';\n"
+    if body_line not in text and head_line in text:
+        text = text.replace(head_line, head_line + body_line, 1)
     return text
 
 
@@ -122,7 +120,6 @@ def install() -> None:
         return
 
     _themes.render_css = _render_css
-    # proxy.py imports render_css directly, so update that local reference too.
     _proxy.render_css = _render_css
     _proxy.runtime_nginx = _runtime_nginx
     _INSTALLED = True
