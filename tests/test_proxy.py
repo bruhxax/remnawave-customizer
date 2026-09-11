@@ -41,9 +41,13 @@ class ProxyTests(unittest.TestCase):
         self.assertIn('sub_filter_types text/css', nginx)
         self.assertIn('sub_filter_once off', nginx)
 
-    def test_injector_rewrites_hardcoded_cyan_effects_in_css(self):
+    def test_injector_rewrites_hardcoded_cyan_and_indigo_effects_in_css(self):
         nginx = runtime_nginx()
-        self.assertIn("rgba(var(--rwc-accent-rgb),", nginx)
+        self.assertIn("sub_filter 'rgb(6, 182, 212,' 'rgba(var(--rwc-accent-rgb),'", nginx)
+        self.assertIn("sub_filter 'rgb(99, 102, 241,' 'rgba(var(--rwc-accent-rgb),'", nginx)
+        self.assertIn("sub_filter 'rgba(59, 130, 246,' 'rgba(var(--rwc-accent-rgb),'", nginx)
+        self.assertIn("sub_filter '#06b6d4' 'var(--rwc-accent)'", nginx)
+        self.assertIn("sub_filter '#22d3ee' 'var(--mantine-color-cyan-4)'", nginx)
 
 
 if __name__ == '__main__':
