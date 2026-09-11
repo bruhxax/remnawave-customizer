@@ -17,13 +17,29 @@ class ThemePreset:
     radius: str
 
 
+# Presets deliberately keep background/surface contrast restrained. Remnawave has
+# a lot of nested cards, drawers and tables; very different surface colors make
+# those layers visually noisy even when every selector is technically correct.
 PRESETS: tuple[ThemePreset, ...] = (
-    ThemePreset('midnight', 'Midnight Blue', 'Midnight Blue', (0, 169, 255), (7, 12, 19), (13, 21, 31), 'medium'),
-    ThemePreset('oled', 'OLED Black', 'OLED Black', (0, 210, 255), (0, 0, 0), (9, 10, 12), 'medium'),
-    ThemePreset('graphite', 'Graphite', 'Graphite', (122, 162, 247), (15, 17, 21), (25, 28, 34), 'small'),
-    ThemePreset('nord', 'Nord', 'Nord', (136, 192, 208), (36, 41, 51), (46, 52, 64), 'medium'),
-    ThemePreset('purple', 'Purple Dark', 'Purple Dark', (168, 123, 255), (13, 10, 22), (25, 19, 39), 'large'),
-    ThemePreset('emerald', 'Emerald', 'Emerald', (52, 211, 153), (6, 16, 14), (13, 29, 25), 'medium'),
+    ThemePreset('remnawave', 'Remnawave+', 'Remnawave+', (6, 182, 212), (13, 17, 23), (22, 27, 34), 'medium'),
+    ThemePreset('midnight', 'Midnight Blue', 'Midnight Blue', (36, 166, 255), (7, 11, 17), (16, 22, 30), 'medium'),
+    ThemePreset('oled', 'OLED Black', 'OLED Black', (0, 210, 255), (0, 0, 0), (10, 11, 13), 'medium'),
+    ThemePreset('graphite', 'Graphite', 'Graphite', (122, 162, 247), (14, 15, 18), (24, 26, 31), 'small'),
+    ThemePreset('slate', 'Slate', 'Slate', (100, 160, 255), (13, 17, 23), (24, 30, 39), 'medium'),
+    ThemePreset('nord', 'Nord', 'Nord', (136, 192, 208), (34, 39, 49), (45, 51, 63), 'medium'),
+    ThemePreset('ocean', 'Deep Ocean', 'Deep Ocean', (34, 211, 238), (4, 13, 20), (10, 25, 35), 'medium'),
+    ThemePreset('arctic', 'Arctic', 'Arctic', (125, 211, 252), (12, 20, 27), (23, 33, 42), 'large'),
+    ThemePreset('emerald', 'Emerald', 'Emerald', (52, 211, 153), (6, 15, 13), (14, 28, 24), 'medium'),
+    ThemePreset('forest', 'Forest', 'Forest', (74, 222, 128), (8, 14, 10), (18, 29, 21), 'small'),
+    ThemePreset('purple', 'Purple Dark', 'Purple Dark', (168, 123, 255), (12, 9, 20), (25, 20, 36), 'large'),
+    ThemePreset('violet', 'Violet', 'Violet', (139, 92, 246), (13, 11, 21), (25, 22, 37), 'medium'),
+    ThemePreset('tokyo', 'Tokyo Night', 'Tokyo Night', (122, 162, 247), (10, 14, 24), (21, 27, 40), 'medium'),
+    ThemePreset('rose', 'Rose Pine', 'Rose Pine', (235, 188, 186), (19, 17, 28), (31, 27, 42), 'large'),
+    ThemePreset('mocha', 'Mocha', 'Mocha', (137, 180, 250), (17, 17, 27), (30, 30, 46), 'medium'),
+    ThemePreset('crimson', 'Crimson', 'Crimson', (248, 113, 113), (18, 9, 11), (32, 18, 21), 'medium'),
+    ThemePreset('amber', 'Amber', 'Amber', (245, 158, 11), (18, 13, 7), (32, 25, 16), 'small'),
+    ThemePreset('sunset', 'Sunset', 'Sunset', (251, 113, 133), (20, 10, 15), (34, 20, 27), 'large'),
+    ThemePreset('cyber', 'Cyber Purple', 'Cyber Purple', (217, 70, 239), (10, 7, 16), (23, 16, 31), 'medium'),
 )
 
 RADIUS_VALUES = {
@@ -107,39 +123,38 @@ def css_rgb_csv(c: RGB) -> str:
 
 
 def accent_scale(accent: RGB) -> list[RGB]:
-    # Remnawave uses cyan shades directly in many components, therefore the
-    # whole cyan scale follows the selected accent instead of just buttons.
+    # Remnawave's primaryShade is 8. Keep shade 8 equal to the chosen color so
+    # the palette shown in the CLI is the color users actually see in buttons.
     return [
         mix(accent, (255, 255, 255), 0.92),
         mix(accent, (255, 255, 255), 0.82),
-        mix(accent, (255, 255, 255), 0.68),
-        mix(accent, (255, 255, 255), 0.50),
-        mix(accent, (255, 255, 255), 0.30),
-        mix(accent, (255, 255, 255), 0.14),
+        mix(accent, (255, 255, 255), 0.70),
+        mix(accent, (255, 255, 255), 0.56),
+        mix(accent, (255, 255, 255), 0.40),
+        mix(accent, (255, 255, 255), 0.25),
+        mix(accent, (255, 255, 255), 0.12),
         accent,
-        darken(accent, 0.10),
-        darken(accent, 0.20),
-        darken(accent, 0.32),
+        accent,
+        darken(accent, 0.14),
     ]
 
 
 def dark_scale(background: RGB, surface: RGB) -> list[RGB]:
-    # dark.0..4 are frequently used for text and borders, while dark.5..9 are
-    # structural surfaces. Keeping the text side neutral prevents a selected
-    # green/purple card color from tinting every label in the Panel.
-    border = lighten(surface, 0.18)
-    border_soft = lighten(surface, 0.10)
+    # Follow Remnawave/Mantine's own dark hierarchy instead of repainting every
+    # component. This keeps nested forms, tables and modals visually consistent.
+    border = lighten(surface, 0.14)
+    border_soft = lighten(surface, 0.075)
     return [
-        (235, 238, 243),
-        (205, 210, 218),
-        (169, 176, 187),
-        (132, 140, 152),
+        (232, 236, 242),
+        (204, 210, 219),
+        (168, 176, 188),
+        (126, 136, 150),
         border,
         border_soft,
         surface,
-        mix(surface, background, 0.46),
+        mix(surface, background, 0.42),
         background,
-        darken(background, 0.20),
+        darken(background, 0.16),
     ]
 
 
@@ -152,33 +167,22 @@ def render_css(theme: dict) -> str:
 
     accents = accent_scale(accent)
     darks = dark_scale(background, surface)
-
     text = (238, 241, 245)
-    dimmed = (160, 168, 180)
-    muted = (116, 126, 140)
-    surface_deep = mix(surface, background, 0.48)
-    surface_raised = lighten(surface, 0.035)
-    surface_hover = lighten(surface, 0.075)
-    surface_active = mix(surface, accent, 0.10)
-    input_bg = mix(surface, background, 0.30)
-    border = lighten(surface, 0.16)
-    border_strong = lighten(surface, 0.24)
+    dimmed = (157, 166, 179)
+    muted = (112, 122, 137)
+    surface_hover = lighten(surface, 0.055)
+    border = darks[4]
 
     lines = [
-        '/* Generated by Remnawave Customizer. Do not edit manually. */',
+        '/* Generated by Remnawave Customizer. Token-first compatibility layer. */',
         ':root, [data-mantine-color-scheme="dark"] {',
         f'  --rwc-background: {css_rgb(background)};',
         f'  --rwc-surface: {css_rgb(surface)};',
-        f'  --rwc-surface-deep: {css_rgb(surface_deep)};',
-        f'  --rwc-surface-raised: {css_rgb(surface_raised)};',
+        f'  --rwc-surface-deep: {css_rgb(darks[7])};',
         f'  --rwc-surface-hover: {css_rgb(surface_hover)};',
-        f'  --rwc-surface-active: {css_rgb(surface_active)};',
-        f'  --rwc-input: {css_rgb(input_bg)};',
         f'  --rwc-border: {css_rgb(border)};',
-        f'  --rwc-border-strong: {css_rgb(border_strong)};',
         f'  --rwc-accent: {css_rgb(accent)};',
         f'  --rwc-accent-rgb: {css_rgb_csv(accent)};',
-        f'  --rwc-accent-soft-rgb: {css_rgb_csv(accents[4])};',
         f'  --rwc-text: {css_rgb(text)};',
         f'  --rwc-dimmed: {css_rgb(dimmed)};',
         f'  --rwc-muted: {css_rgb(muted)};',
@@ -187,11 +191,13 @@ def render_css(theme: dict) -> str:
         f'  --mantine-color-dimmed: {css_rgb(dimmed)} !important;',
         f'  --mantine-color-bright: {css_rgb(text)} !important;',
         f'  --mantine-color-placeholder: {css_rgb(muted)} !important;',
-        '  --mantine-color-default: var(--rwc-surface) !important;',
+        '  --mantine-color-default: var(--mantine-color-dark-6) !important;',
         '  --mantine-color-default-hover: var(--rwc-surface-hover) !important;',
         '  --mantine-color-default-color: var(--rwc-text) !important;',
-        '  --mantine-color-default-border: var(--rwc-border) !important;',
+        '  --mantine-color-default-border: var(--mantine-color-dark-4) !important;',
         '  --mantine-color-anchor: var(--rwc-accent) !important;',
+        '  --mantine-color-gray-outline-hover: var(--rwc-surface-hover) !important;',
+        '  --mantine-color-cyan-outline: var(--rwc-accent) !important;',
     ]
 
     for i, value in enumerate(accents):
@@ -202,9 +208,9 @@ def render_css(theme: dict) -> str:
     lines += [
         '  --mantine-primary-color-filled: var(--mantine-color-cyan-8) !important;',
         '  --mantine-primary-color-filled-hover: var(--mantine-color-cyan-9) !important;',
-        '  --mantine-primary-color-light: rgba(var(--rwc-accent-rgb), 0.16) !important;',
-        '  --mantine-primary-color-light-hover: rgba(var(--rwc-accent-rgb), 0.23) !important;',
-        '  --mantine-primary-color-light-color: var(--mantine-color-cyan-3) !important;',
+        '  --mantine-primary-color-light: rgba(var(--rwc-accent-rgb), 0.14) !important;',
+        '  --mantine-primary-color-light-hover: rgba(var(--rwc-accent-rgb), 0.20) !important;',
+        '  --mantine-primary-color-light-color: var(--mantine-color-cyan-4) !important;',
         f'  --mantine-radius-xs: {max(0, radius - 6)}px !important;',
         f'  --mantine-radius-sm: {max(0, radius - 3)}px !important;',
         f'  --mantine-radius-md: {radius}px !important;',
@@ -213,84 +219,14 @@ def render_css(theme: dict) -> str:
         f'  --mantine-radius-default: {radius}px !important;',
         '}',
         '',
+        '/* Keep the page canvas on the selected background. Components themselves',
+        '   continue to use Remnawave/Mantine tokens instead of broad CSS overrides. */',
         'html, body, #root, .mantine-AppShell-root, .mantine-AppShell-main {',
         '  background-color: var(--rwc-background) !important;',
-        '  color: var(--rwc-text) !important;',
         '}',
         '',
-        '/* App chrome */',
-        '.mantine-AppShell-navbar, .mantine-AppShell-header {',
-        '  background-color: var(--rwc-surface-deep) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '',
-        '/* Cards: explicit semantic backgrounds from Remnawave are preserved. */',
-        '.mantine-Card-root:not([style*="background" i]) {',
-        '  background-color: var(--rwc-surface) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '.mantine-Paper-root[data-with-border]:not([style*="background" i]) {',
-        '  background-color: var(--rwc-surface) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '',
-        '/* Modals and drawers must not keep the original navy surface. */',
-        '.mantine-Modal-content, .mantine-Drawer-content {',
-        '  background-color: var(--rwc-surface) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '.mantine-Modal-header, .mantine-Drawer-header {',
-        '  background-color: var(--rwc-surface) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '.mantine-Modal-body, .mantine-Drawer-body {',
-        '  background-color: var(--rwc-surface) !important;',
-        '}',
-        '',
-        '/* Floating surfaces */',
-        '.mantine-Popover-dropdown, .mantine-Menu-dropdown, .mantine-Combobox-dropdown,',
-        '.mantine-Select-dropdown, .mantine-MultiSelect-dropdown, .mantine-Autocomplete-dropdown,',
-        '.mantine-DatePicker-dropdown {',
-        '  background-color: var(--rwc-surface-raised) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '',
-        '/* Form controls */',
-        ':where(.mantine-Input-input, .mantine-Textarea-input, .mantine-Select-input,',
-        '.mantine-MultiSelect-input, .mantine-NumberInput-input, .mantine-DateInput-input,',
-        '.mantine-PillsInput-input, .mantine-PasswordInput-innerInput) {',
-        '  background-color: var(--rwc-input) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '  color: var(--rwc-text) !important;',
-        '}',
-        ':where(.mantine-Input-input, .mantine-Textarea-input, .mantine-Select-input,',
-        '.mantine-MultiSelect-input, .mantine-NumberInput-input, .mantine-DateInput-input,',
-        '.mantine-PillsInput-input):focus,',
-        ':where(.mantine-Input-input, .mantine-Textarea-input, .mantine-Select-input,',
-        '.mantine-MultiSelect-input, .mantine-NumberInput-input, .mantine-DateInput-input,',
-        '.mantine-PillsInput-input):focus-within {',
-        '  border-color: var(--rwc-accent) !important;',
-        '  box-shadow: 0 0 0 1px rgba(var(--rwc-accent-rgb), 0.20) !important;',
-        '}',
-        '.mantine-Fieldset-root {',
-        '  background-color: var(--rwc-surface) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '',
-        '/* Common interactive surfaces */',
-        '.mantine-SegmentedControl-root {',
-        '  background-color: var(--rwc-input) !important;',
-        '  border-color: var(--rwc-border) !important;',
-        '}',
-        '.mantine-SegmentedControl-indicator { background-color: var(--rwc-surface-hover) !important; }',
-        '.mantine-Accordion-item { border-color: var(--rwc-border) !important; }',
-        '.mantine-Tabs-list { border-color: var(--rwc-border) !important; }',
-        '.mantine-Table-table { --table-border-color: var(--rwc-border) !important; }',
-        '.mantine-Table-tr:hover, .mantine-Menu-item:hover, .mantine-Combobox-option:hover {',
-        '  background-color: var(--rwc-surface-hover) !important;',
-        '}',
-        '',
-        '/* Remnawave has a few inline legacy surface colors. */',
+        '/* Only inline legacy surfaces need a selector fallback. CSS-module legacy',
+        '   colors are normalized by the internal proxy before the browser caches CSS. */',
         '[style*="#1b1f26" i], [style*="rgb(27, 31, 38)" i] {',
         '  background-color: var(--rwc-surface) !important;',
         '}',
@@ -299,11 +235,11 @@ def render_css(theme: dict) -> str:
         '}',
         '',
         '::-webkit-scrollbar-thumb {',
-        '  background: linear-gradient(180deg, var(--mantine-color-cyan-7), var(--rwc-accent)) !important;',
-        '  border-color: var(--rwc-surface-deep) !important;',
+        '  background: var(--rwc-accent) !important;',
+        '  border-color: var(--rwc-background) !important;',
         '}',
         '::selection {',
-        '  background: rgba(var(--rwc-accent-rgb), 0.28) !important;',
+        '  background: rgba(var(--rwc-accent-rgb), 0.24) !important;',
         '  color: var(--rwc-text) !important;',
         '}',
         '',
