@@ -1,7 +1,5 @@
 # Security
 
-Remnawave Customizer does not modify the Remnawave database or replace the official Panel frontend.
+Remnawave Customizer does not replace the official Panel frontend, database or application files. Themes are applied through a reversible local CSS/proxy layer on the Panel server.
 
-It stores its configuration in `/etc/remnawave-customizer`, creates backups before changing a supported reverse-proxy route, and injects only a same-origin CSS file through a separate internal proxy container.
-
-If you discover a security issue, please report it privately to the repository owner before publishing details.
+If you discover a security issue, please report it privately to the repository owner rather than opening a public issue with sensitive details.
