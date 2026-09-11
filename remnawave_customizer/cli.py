@@ -2,18 +2,14 @@ from __future__ import annotations
 
 import argparse
 import copy
-import shutil
-import sys
 import time
-from pathlib import Path
 
 from . import __version__
 from . import ui
-from .config import CONFIG_FILE, RUNTIME_DIR, load_config, save_config
+from .config import load_config, save_config
 from .palette import choose_color
 from .proxy import (
     CUSTOM_TARGET,
-    PANEL_TARGET,
     apply_theme,
     detect_proxy,
     ensure_installed,
@@ -36,7 +32,7 @@ from .themes import (
     rgb,
     theme_from_preset,
 )
-from .utils import CommandError, require_root, run
+from .utils import require_root
 
 TEXT = {
     'ru': {
@@ -48,7 +44,7 @@ TEXT = {
         'surface': 'Цвет карточек и поверхностей',
         'radius': 'Скругление элементов',
         'preview': 'Предпросмотр',
-        'apply': 'Применить изменения',
+        'apply': 'Применить тему повторно',
         'reset': 'Вернуть стандартный вид',
         'settings': 'Настройки',
         'exit': 'Выход',
@@ -63,8 +59,8 @@ TEXT = {
         'detected': 'найдена',
         'not_found': 'не найдена',
         'custom': 'Custom',
-        'saved': 'Выбрано. Нажмите «Применить изменения», чтобы обновить Panel.',
         'applied': 'Тема применена. Обновите страницу Panel в браузере.',
+        'apply_failed': 'Не удалось применить тему. Настройки возвращены к предыдущим.',
         'reset_done': 'Стандартный вид восстановлен. Обновите страницу Panel.',
         'setup_title': 'Первоначальная настройка',
         'setup_only_panel': 'Customizer должен устанавливаться исключительно на сервере, где находится Remnawave Panel.',
@@ -73,7 +69,6 @@ TEXT = {
         'setup_confirm': 'Подключить Customizer к Panel?',
         'setup_done': 'Настройка завершена',
         'unsupported': 'Не найден поддерживаемый reverse proxy. Поддерживаются официальные Nginx, Caddy, Angie и Traefik.',
-        'language': 'Язык',
         'back': 'Назад',
         'press_enter': 'Нажмите Enter, чтобы продолжить',
         'radius_title': 'Выберите скругление',
@@ -96,7 +91,7 @@ TEXT = {
         'surface': 'Cards and surfaces color',
         'radius': 'Element rounding',
         'preview': 'Preview',
-        'apply': 'Apply changes',
+        'apply': 'Reapply theme',
         'reset': 'Restore default look',
         'settings': 'Settings',
         'exit': 'Exit',
@@ -111,8 +106,8 @@ TEXT = {
         'detected': 'detected',
         'not_found': 'not found',
         'custom': 'Custom',
-        'saved': 'Selected. Choose “Apply changes” to update Panel appearance.',
         'applied': 'Theme applied. Refresh the Panel page in your browser.',
+        'apply_failed': 'Could not apply the theme. Previous settings were restored.',
         'reset_done': 'Default appearance restored. Refresh the Panel page.',
         'setup_title': 'Initial setup',
         'setup_only_panel': 'Customizer must be installed only on the server where Remnawave Panel is installed.',
@@ -121,7 +116,6 @@ TEXT = {
         'setup_confirm': 'Connect Customizer to Panel?',
         'setup_done': 'Setup complete',
         'unsupported': 'Supported reverse proxy was not found. Official Nginx, Caddy, Angie and Traefik layouts are supported.',
-        'language': 'Language',
         'back': 'Back',
         'press_enter': 'Press Enter to continue',
         'radius_title': 'Choose element rounding',
@@ -184,6 +178,25 @@ def _set_custom(config: dict, field: str, value) -> None:
     save_config(config)
 
 
+def _apply_now(config: dict, lang: str) -> bool:
+    spinner = ui.Spinner('Применяю тему...' if lang == 'ru' else 'Applying theme...').start()
+    try:
+        apply_theme(config)
+        spinner.stop(True, tr(lang, 'applied'))
+        time.sleep(0.9)
+        return True
+    except Exception as exc:
+        spinner.stop(False, str(exc))
+        return False
+
+
+def _restore_theme(config: dict, previous_theme: dict, lang: str) -> None:
+    config['theme'] = previous_theme
+    save_config(config)
+    ui.warn(tr(lang, 'apply_failed'))
+    ui.pause(tr(lang, 'press_enter'))
+
+
 def choose_preset(config: dict, lang: str) -> None:
     ui.clear(); header(lang); ui.heading(tr(lang, 'select_theme'))
     labels = [p.name_ru if lang == 'ru' else p.name_en for p in PRESETS] + [tr(lang, 'back')]
@@ -191,11 +204,15 @@ def choose_preset(config: dict, lang: str) -> None:
     choice = ui.choose(tr(lang, 'choose'), [str(i) for i in range(1, len(labels) + 1)], '1')
     if int(choice) == len(labels):
         return
+
+    previous_theme = copy.deepcopy(config['theme'])
     preset = PRESETS[int(choice) - 1]
     config['theme'] = theme_from_preset(preset)
     save_config(config)
-    ui.ok(tr(lang, 'saved'))
-    time.sleep(0.7)
+
+    ui.clear(); header(lang); preview_inline(config, lang); print()
+    if not _apply_now(config, lang):
+        _restore_theme(config, previous_theme, lang)
 
 
 def choose_palette_field(config: dict, lang: str, field: str) -> None:
@@ -205,12 +222,16 @@ def choose_palette_field(config: dict, lang: str, field: str) -> None:
         colors, title = BACKGROUND_COLORS, tr(lang, 'background')
     else:
         colors, title = SURFACE_COLORS, tr(lang, 'surface')
+
     current = rgb(config['theme'][field])
     selected = choose_color(colors, title, current=current, columns=8)
-    if selected is not None:
-        _set_custom(config, field, selected)
-        ui.ok(tr(lang, 'saved'))
-        time.sleep(0.6)
+    if selected is None:
+        return
+
+    previous_theme = copy.deepcopy(config['theme'])
+    _set_custom(config, field, selected)
+    if not _apply_now(config, lang):
+        _restore_theme(config, previous_theme, lang)
 
 
 def choose_radius(config: dict, lang: str) -> None:
@@ -223,9 +244,11 @@ def choose_radius(config: dict, lang: str) -> None:
     choice = ui.choose(tr(lang, 'choose'), [str(i) for i in range(1, len(labels) + 1)], default)
     if int(choice) == len(labels):
         return
+
+    previous_theme = copy.deepcopy(config['theme'])
     _set_custom(config, 'radius', keys[int(choice) - 1])
-    ui.ok(tr(lang, 'saved'))
-    time.sleep(0.6)
+    if not _apply_now(config, lang):
+        _restore_theme(config, previous_theme, lang)
 
 
 def preview(config: dict, lang: str) -> None:
@@ -241,26 +264,9 @@ def preview(config: dict, lang: str) -> None:
         f"{tr(lang, 'radius')}:      {radius_label}",
     ])
     print()
-    # Terminal-only visual sample.
-    bar = ui.swatch(accent, 18)
-    card = ui.swatch(surface, 18)
-    background = ui.swatch(bg, 18)
-    print(f"  {background}  background")
-    print(f"  {card}  cards")
-    print(f"  {bar}  accent")
-    ui.pause(tr(lang, 'press_enter'))
-
-
-def apply_current(config: dict, lang: str) -> None:
-    ui.clear(); header(lang); preview_inline(config, lang)
-    if not ui.confirm(tr(lang, 'apply_confirm'), default=True):
-        return
-    spinner = ui.Spinner('Применяю тему...' if lang == 'ru' else 'Applying theme...').start()
-    try:
-        apply_theme(config)
-        spinner.stop(True, tr(lang, 'applied'))
-    except Exception as exc:
-        spinner.stop(False, str(exc))
+    print(f"  {ui.swatch(bg, 18)}  background")
+    print(f"  {ui.swatch(surface, 18)}  cards")
+    print(f"  {ui.swatch(accent, 18)}  accent")
     ui.pause(tr(lang, 'press_enter'))
 
 
@@ -273,6 +279,14 @@ def preview_inline(config: dict, lang: str) -> None:
         f"{tr(lang, 'surface')}:    {ui.swatch(rgb(theme['surface']), 7)}",
         f"{tr(lang, 'radius')}:     {RADIUS_LABELS[lang].get(str(theme.get('radius')), '')}",
     ])
+
+
+def apply_current(config: dict, lang: str) -> None:
+    ui.clear(); header(lang); preview_inline(config, lang)
+    if not ui.confirm(tr(lang, 'apply_confirm'), default=True):
+        return
+    if not _apply_now(config, lang):
+        ui.pause(tr(lang, 'press_enter'))
 
 
 def reset_default(config: dict, lang: str) -> None:
@@ -297,20 +311,24 @@ def setup(config: dict | None = None) -> dict:
     lang = select_language(config.get('language'))
     config['language'] = lang
     save_config(config)
+
     ui.clear(); header(lang); ui.heading(tr(lang, 'setup_title'))
     ui.warn(tr(lang, 'setup_only_panel'))
     ok, reason = panel_is_here()
     if not ok:
         ui.error(reason)
         raise SystemExit(1)
+
     proxy = detect_proxy()
     if not proxy:
         ui.error(tr(lang, 'unsupported'))
         raise SystemExit(1)
+
     ui.ok(tr(lang, 'setup_proxy', name=proxy.name))
     ui.info(tr(lang, 'setup_safe'))
     if not ui.confirm(tr(lang, 'setup_confirm'), default=True):
         raise SystemExit(0)
+
     spinner = ui.Spinner('Подключаю Customizer...' if lang == 'ru' else 'Connecting Customizer...').start()
     try:
         info = ensure_installed(config)
@@ -359,18 +377,27 @@ def interactive(config: dict) -> None:
         ]
         ui.menu(options)
         choice = ui.choose(tr(lang, 'choose'), [str(i) for i in range(1, 11)], '10')
-        if choice == '1': choose_preset(config, lang)
-        elif choice == '2': choose_palette_field(config, lang, 'accent')
-        elif choice == '3': choose_palette_field(config, lang, 'background')
-        elif choice == '4': choose_palette_field(config, lang, 'surface')
-        elif choice == '5': choose_radius(config, lang)
-        elif choice == '6': preview(config, lang)
-        elif choice == '7': apply_current(config, lang)
-        elif choice == '8': reset_default(config, lang)
+        if choice == '1':
+            choose_preset(config, lang)
+        elif choice == '2':
+            choose_palette_field(config, lang, 'accent')
+        elif choice == '3':
+            choose_palette_field(config, lang, 'background')
+        elif choice == '4':
+            choose_palette_field(config, lang, 'surface')
+        elif choice == '5':
+            choose_radius(config, lang)
+        elif choice == '6':
+            preview(config, lang)
+        elif choice == '7':
+            apply_current(config, lang)
+        elif choice == '8':
+            reset_default(config, lang)
         elif choice == '9':
             lang = settings(config, lang)
         else:
-            ui.clear(); return
+            ui.clear()
+            return
 
 
 def status(config: dict, lang: str) -> int:
@@ -386,7 +413,8 @@ def status(config: dict, lang: str) -> int:
 
 def uninstall_integration(config: dict, lang: str) -> int:
     ui.clear(); header(lang)
-    if not ui.confirm('Отключить Customizer от reverse proxy?' if lang == 'ru' else 'Disconnect Customizer from reverse proxy?', default=False):
+    prompt = 'Отключить Customizer от reverse proxy?' if lang == 'ru' else 'Disconnect Customizer from reverse proxy?'
+    if not ui.confirm(prompt, default=False):
         return 0
     try:
         restore_proxy(config)
@@ -396,7 +424,8 @@ def uninstall_integration(config: dict, lang: str) -> int:
         ui.ok('Customizer отключен' if lang == 'ru' else 'Customizer disconnected')
         return 0
     except Exception as exc:
-        ui.error(str(exc)); return 1
+        ui.error(str(exc))
+        return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -416,26 +445,28 @@ def main() -> int:
     if not require_root():
         ui.error('Запустите через sudo / Run as root.')
         return 1
+
     config = load_config()
     if args.command == 'setup' or not config.get('configured'):
         config = setup(config)
         if args.command == 'setup':
             return 0
+
     lang = config.get('language', 'ru')
     if args.command == 'apply':
-        try:
-            apply_theme(config); ui.ok(tr(lang, 'applied')); return 0
-        except Exception as exc:
-            ui.error(str(exc)); return 1
+        return 0 if _apply_now(config, lang) else 1
     if args.command == 'reset':
         config['theme']['preset'] = 'default'
         config['theme']['enabled'] = False
         save_config(config)
-        write_empty_theme(); ui.ok(tr(lang, 'reset_done')); return 0
+        write_empty_theme()
+        ui.ok(tr(lang, 'reset_done'))
+        return 0
     if args.command == 'status':
         return status(config, lang)
     if args.command == 'disconnect':
         return uninstall_integration(config, lang)
+
     interactive(config)
     return 0
 
