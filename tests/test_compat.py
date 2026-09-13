@@ -7,9 +7,14 @@ from remnawave_customizer.themes import PRESETS, theme_from_preset
 
 class CompatTests(unittest.TestCase):
     def test_package_enables_compat_layer(self):
-        self.assertEqual(remnawave_customizer.__version__, '0.6.1')
+        self.assertEqual(remnawave_customizer.__version__, '1.0.0')
         css = themes.render_css(theme_from_preset(PRESETS[0]))
         self.assertIn('decorative accent compatibility', css)
+
+    def test_stable_release_ships_large_unique_preset_collection(self):
+        self.assertGreaterEqual(len(PRESETS), 60)
+        keys = [preset.key for preset in PRESETS]
+        self.assertEqual(len(keys), len(set(keys)))
 
     def test_action_and_theme_icons_follow_accent(self):
         css = themes.render_css(theme_from_preset(PRESETS[0]))
