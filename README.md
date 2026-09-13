@@ -4,6 +4,8 @@
 
 **Темы, цвета, скругления и визуальные эффекты для Remnawave Panel прямо из консоли.**
 
+**64 готовые темы · Panel + локальный Subscription Page · безопасный сброс к оригиналу**
+
 [English](README_EN.md) · [MIT License](LICENSE)
 
 </div>
