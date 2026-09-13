@@ -4,6 +4,8 @@
 
 **Themes, colors, rounding and visual effects for Remnawave Panel from the console.**
 
+**64 presets · Panel + local Subscription Page · safe exact stock reset**
+
 [Русский](README.md) · [MIT License](LICENSE)
 
 </div>
