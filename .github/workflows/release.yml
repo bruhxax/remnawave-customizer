@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'remnawave_customizer/__init__.py'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test stable build
+        run: |
+          python -m unittest discover -s tests -v
+          python -m compileall -q remnawave_customizer
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(python - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('remnawave_customizer/__init__.py').read_text()
+          print(re.search(r'__version__\s*=\s*["\']([^"\']+)', text).group(1))
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists — nothing to do."
+            exit 0
+          fi
+
+          cat > /tmp/release-notes.md <<'EOF'
+          ## Remnawave Customizer v1.0.0
+
+          First stable release of Remnawave Customizer.
+
+          - 64 built-in dark themes across blue, cyan, purple, pink, red, orange, gold, green, teal and neutral styles
+          - terminal color palette, backgrounds, surfaces and rounding controls
+          - subtle visual effects that follow the selected accent
+          - local Subscription Page theming and one-click sync with Panel
+          - exact stock reset without modifying the official Remnawave frontend
+          - safe update flow with saved settings
+          EOF
+
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Remnawave Customizer v$VERSION" \
+            --notes-file /tmp/release-notes.md
